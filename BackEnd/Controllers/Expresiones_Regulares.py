@@ -1,102 +1,109 @@
 import re
-def sumar(a, b):
-    return a + b
+import pandas as pd
+import os
 
-def restar(a, b):
-    return a - b
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-import re
+csv_path = os.path.join(current_dir, '..', 'data', 'matriculas_data.xlsx')
 
-# Provincias y letras válidas
-provincias = {
-    'Azuay': 'A', 'Bolívar': 'B', 'Carchi': 'C', 'Esmeraldas': 'E', 'Guayas': 'G', 'Chimborazo': 'H',
-    'Imbabura': 'I', 'Santo Domingo de los Tsáchilas': 'J', 'Sucumbíos': 'K', 'Loja': 'L', 'Manabí': 'M',
-    'Napo': 'N', 'El Oro': 'O', 'Pichincha': 'P', 'Orellana': 'Q', 'Los Ríos': 'R', 'Pastaza': 'S',
-    'Tungurahua': 'T', 'Cañar': 'U', 'Morona Santiago': 'V', 'Galápagos': 'W', 'Cotopaxi': 'X', 'Santa Elena': 'Y', 'Zamora Chinchipe': 'Z'
-}
-letras_validas = set(provincias.values())
-expresion_combinada = r"^[A-Z](?![AUZEXM])[B-Y][A-Z]{2}\d{4}$|^[A-Z][A-U,Z,E,X,M][A-Z]{2}\d{4}$"
-
-
-letras_particular = set("BCDFGHIJKLNOPQRSTVWY")
-letras_servicio_publico = set("AUZEXM")
-
-# Reglas de colores
-colores_validos = {
-    "Particular": {"fondo": "Blanco", "letra": "Negro"},
-    "Servicio Público": {"fondo": "Blanco", "letra": "Negro"}
-}
-# Función corregida
-def verificar_placa(placa, data):
-    placa = placa.upper()  # Convertir la placa a mayúsculas para asegurar la validación
-    color_fondo = data.get("color_fondo", "").capitalize()
-    color_letra = data.get("color_letra", "").capitalize()
-
-    if not placa or not color_fondo or not color_letra:
-        return {"error": "Faltan datos: placa, color_fondo o color_letra."}, 400
-
-    # Validar que la primera letra de la placa corresponde a una provincia válida
-    if placa[0] not in letras_validas:
-        return {"error": "La primera letra de la placa no corresponde a una provincia válida."}, 400
-
-    # Validar placas con guión y longitud de 8 caracteres
-    if len(placa) == 8 and '-' in placa:
-        partes = placa.split('-')
-        if len(partes) == 2:
-            letras, numeros = partes
-            if len(letras) == 3 and len(numeros) == 4 and letras.isalpha() and numeros.isdigit():
-                if placa[1] in letras_particular:
-                    tipo_vehiculo = "Particular"
-                elif placa[1] in letras_servicio_publico:
-                    tipo_vehiculo = "Servicio Público"
-                else:
-                    return {"error": "Formato incorrecto para Carro Particular o Servicio Público."}, 400
-                
-                # Validar colores
-                colores_requeridos = colores_validos[tipo_vehiculo]
-                if color_fondo != colores_requeridos["fondo"] or color_letra != colores_requeridos["letra"]:
-                    return {
-                        "error": f"Los colores especificados no son válidos para un vehículo {tipo_vehiculo}. "
-                                 f"Requiere fondo: {colores_requeridos['fondo']} y letra: {colores_requeridos['letra']}."
-                    }, 400
-                
-                # Obtener la provincia
-                provincia = [prov for prov, letra in provincias.items() if letra == placa[0]][0]
-                
-                # Retornar la respuesta con los detalles
-                return {
-                    "placa": placa,
-                    "tipo_vehiculo": tipo_vehiculo,
-                    "provincia": provincia,
-                    "pais": "Ecuador"
-                }, 200
-            else:
-                return {"error": "Formato incorrecto: Verifique que tenga 3 letras, un guion y 4 números."}, 400
-
-    # Validar con expresión regular combinada
-    if re.match(expresion_combinada, placa):
-        if placa[1] in letras_particular:
-            tipo_vehiculo = "Particular"
-        elif placa[1] in letras_servicio_publico:
-            tipo_vehiculo = "Servicio Público"
-        else:
-            tipo_vehiculo = "Desconocido"
-
-        # Validar colores
-        colores_requeridos = colores_validos[tipo_vehiculo]
-        if color_fondo != colores_requeridos["fondo"] or color_letra != colores_requeridos["letra"]:
-            return {
-                "error": f"Los colores especificados no son válidos para un vehículo {tipo_vehiculo}. "
-                         f"Requiere fondo: {colores_requeridos['fondo']} y letra: {colores_requeridos['letra']}."
-            }, 400
+def validate_plate(plate):
+    """
+    Valida que la placa tenga el formato correcto:
+    - 3 letras seguidas de 3 números
+    - No acepta las letras Ñ, Q, O
+    """
+    # Convertir a mayúsculas y eliminar espacios
+    plate = plate.strip().upper()
+    
+    # Patrón regex corregido que acepta 3 letras (excluyendo Ñ, Q, O) seguidas de 3 números
+    pattern = r'^[A-P-N-Z]{3}[0-9]{3}$'
+    
+    if not re.match(pattern, plate):
+        return False
+    
+    # Verificar que no contenga las letras prohibidas
+    forbidden_letters = {'Ñ', 'Q', 'O'}
+    if any(letter in plate[:3] for letter in forbidden_letters):
+        return False
         
-        provincia = [prov for prov, letra in provincias.items() if letra == placa[0]][0]
-        return {
-            "placa": placa,
-            "tipo_vehiculo": tipo_vehiculo,
-            "provincia": provincia,
-            "pais": "Ecuador"
+    return True
 
-        }, 200
-    else:
-        return {"error": "La placa no es válida según las reglas establecidas."}, 400
+def alphanumeric_to_number(plate):
+    """Convierte una placa alfanumérica como AAA000 en un valor comparable numéricamente."""
+    letters = plate[:3]  # Tres primeras letras
+    number = int(plate[3:])  # Los últimos tres dígitos como número
+    
+    # Convierte las letras a un valor numérico basado en su posición en el alfabeto
+    letter_value = sum((ord(c) - ord('A')) * (26 ** (2-i)) for i, c in enumerate(letters))
+    
+    return letter_value * 1000 + number
+
+def process_plate_data(plate, color_fondo_input, color_letra_input, csv_path):
+    # Validar formato de la placa
+    if not validate_plate(plate):
+        print("Error: Formato de placa inválido. Debe contener 3 letras seguidas de 3 números.")
+        print("Las letras Ñ, Q y O no están permitidas.")
+        return
+    
+    try:
+        # Leer el archivo Excel
+        df = pd.read_excel(csv_path)
+        
+        # Normaliza la placa (sin espacios, todo en mayúsculas)
+        plate = plate.strip().upper()
+        
+        # Convierte la placa a su valor numérico
+        plate_value = alphanumeric_to_number(plate)
+        
+        found = False
+        # Buscar la fila que contiene la placa
+        for index, row in df.iterrows():
+            # Normaliza los rangos (sin espacios, todo en mayúsculas)
+            range_start = row['Rango_Inicial'].strip().upper()
+            range_end = row['Rango_Final'].strip().upper()
+            
+            # Convierte los rangos a sus valores numéricos
+            range_start_value = alphanumeric_to_number(range_start)
+            range_end_value = alphanumeric_to_number(range_end)
+            
+            # Verificamos si la placa está dentro del rango
+            if range_start_value <= plate_value <= range_end_value:
+                found = True
+                # Extraer información de la fila
+                result = {
+                    'País': row['País'],
+                    'Departamento': row['Departamento'],
+                    'Ciudad': row['Ciudad'],
+                    'Servicio': row['Servicio'],
+                    'Color de fondo': row['ColorFondo'].strip().lower(),
+                    'Color de letra': row['ColorLetra'].strip().lower(),
+                    'Rango': f"{range_start} - {range_end}",
+                    'Placa': plate
+                }
+                
+                # Validar si los colores corresponden
+                if (result['Color de fondo'] == color_fondo_input.strip().lower() and
+                    result['Color de letra'] == color_letra_input.strip().lower()):
+                    print("\nInformación de la placa:")
+                    for key, value in result.items():
+                        print(f"{key}: {value}")
+                else:
+                    print("\nError: Los colores ingresados no coinciden con los registrados para esta placa.")
+                    print(f"Colores registrados: Fondo {result['Color de fondo']}, Letra {result['Color de letra']}")
+                break
+        
+        if not found:
+            print("\nError: Placa no encontrada en los rangos registrados.")
+            
+    except FileNotFoundError:
+        print(f"Error: No se pudo encontrar el archivo Excel en la ruta: {csv_path}")
+    except Exception as e:
+        print(f"Error al procesar los datos: {str(e)}")
+
+
+# Llamada a la función con las entradas
+plate_input = "AGK498"  # Placa a buscar
+color_fondo_input = "Amarillo"  # Color de fondo ingresado por el usuario
+color_letra_input = "Negro"  # Color de letra ingresado por el usuario
+
+process_plate_data(plate_input, color_fondo_input, color_letra_input, csv_path)
