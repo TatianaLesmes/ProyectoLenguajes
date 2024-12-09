@@ -1,0 +1,17 @@
+body {
+    background: linear-gradient(to right, #e6f2ff, #f0e6ff);
+}
+.navbar {
+    background-color: #3498db !important;
+}
+.btn-primary {
+    background-color: #2980b9;
+    border-color: #2980b9;
+}
+.btn-primary:hover {
+    background-color: #3498db;
+    border-color: #3498db;
+}
+.table {
+    background-color: white;
+}
