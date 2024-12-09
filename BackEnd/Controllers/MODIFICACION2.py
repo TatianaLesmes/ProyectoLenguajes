@@ -3,6 +3,8 @@ import pandas as pd
 import os
 from typing import Dict, Optional, Union
 
+
+
 # Ejemplo de uso para pruebas
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,20 +13,17 @@ csv_path = os.path.join(current_dir, '..', 'data', 'matriculas_data.xlsx')
 # Definir las expresiones regulares por país
 PLATE_PATTERNS = {
     "Colombia": {
-    "pattern": r'^[ABCDEFGHIJKLMNPRSTUVWXYZ]{3}-[0-9]{3}$',
+    "pattern": r'^[ABCDEFGHIJKLMNOPQRSTUVWXYZ]{3}-[0-9]{3}$',
     "forbidden_letters": {'Ñ'},
     "description": "3 letras, guion, 3 números (sin Ñ)"
 },
      "Mexico": {
-    "patterns": [
-        r'^[A-Z]{3}-[0-9]{3}-[A-Z]$',  # Formato 1: AAA-000-A
-        r'^[A-Z]-[0-9]{5}-[A-Z]$'      # Formato 2: A-00001-A
-    ],
-    "forbidden_letters": {'Ñ'},
-    "description": "Formato 1: AAA-000-A; Formato 2: A-00001-A (sin Ñ)"
-},
+        "pattern": r'^[ABCDEFGHIJKLMNOPQRSTUVWXYZ]{3}-[0-9]{3}-[ABCDEFGHIJKLMNOPQRSTUVWXYZ]$',
+        "forbidden_letters": {'Ñ'},
+        "description": "3 letras, guión, 3 números, guión, 1 letra (sin Ñ)"
+    },
     "Honduras": {
-        "pattern": r'^[A-Z] [A-Z]{2} [0-9]{4}$',
+        "pattern": r'^[ABCDEFGHIJKLMNPRSTVWXYZ] [ABCDEFGHIJKLMNPRSTVWXYZ]{2} [0-9]{4}$',
         "forbidden_letters": {'Q','O','Ñ''U'},
         "description": "3 letras, guión, 3 números, guión, 1 letra (sin Ñ)"
     }
@@ -41,10 +40,9 @@ def validate_plate_format(plate: str, country: str) -> bool:
     
     plate = plate.strip().upper()
     country_rules = PLATE_PATTERNS[country]
-    patterns = country_rules.get("patterns", [country_rules.get("pattern")])
     
-    # Verificar que cumpla al menos uno de los patrones
-    if not any(re.match(pattern, plate) for pattern in patterns):
+    # Verificar patrón básico
+    if not re.match(country_rules["pattern"], plate):
         return False
     
     # Verificar letras prohibidas
@@ -57,36 +55,20 @@ def alphanumeric_to_number(plate: str) -> int:
     """
     Convierte una placa alfanumérica en un valor numérico comparable
     """
-    # Eliminar guiones y espacios
-    plate = plate.replace('-', '').replace(' ', '')
-
-    # Detectar formato
-    if len(plate) == 7:  # Formato AAA000A o A00001A
-        if plate[0].isalpha() and plate[1:6].isdigit() and plate[6].isalpha():
-            # Formato A00001A
-            letters = plate[0]
-            number = int(plate[1:6])
-            final_letter = plate[6]
-        else:
-            # Formato AAA000A
-            letters = plate[:3]
-            number = int(plate[3:6])
-            final_letter = plate[6]
-    else:
-        raise ValueError(f"Formato de placa desconocido: {plate}")
+    # Eliminar guiones para México
+    plate = plate.replace('-', '').replace(' ','')
     
-    # Calcular valor de las letras iniciales
-    if len(letters) == 3:  # Formato AAA
-        letter_value = sum((ord(c) - ord('A')) * (26 ** (2 - i)) for i, c in enumerate(letters))
-    else:  # Formato A
-        letter_value = ord(letters) - ord('A')
-
+    letters = plate[:3]
+    number = int(plate[3:6])
+    final_letter = plate[6] if len(plate) > 6 else ''
+    
+    letter_value = sum((ord(c) - ord('A')) * (26 ** (2-i)) for i, c in enumerate(letters))
+    
     # Añadir valor de la letra final si existe
     if final_letter:
         letter_value += (ord(final_letter) - ord('A'))
     
-    return letter_value * 10000 + number
-
+    return letter_value * 1000 + number
 
 def get_plate_info(plate: str, color_fondo: str, color_letra: str, excel_path: str) -> Dict[str, Union[str, bool, dict]]:
     """
