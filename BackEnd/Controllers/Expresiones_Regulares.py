@@ -5,27 +5,35 @@ def sumar(a, b):
 def restar(a, b):
     return a - b
 
-# Definir las provincias y sus respectivas letras
+import re
+
+# Provincias y letras válidas
 provincias = {
     'Azuay': 'A', 'Bolívar': 'B', 'Carchi': 'C', 'Esmeraldas': 'E', 'Guayas': 'G', 'Chimborazo': 'H',
     'Imbabura': 'I', 'Santo Domingo de los Tsáchilas': 'J', 'Sucumbíos': 'K', 'Loja': 'L', 'Manabí': 'M',
     'Napo': 'N', 'El Oro': 'O', 'Pichincha': 'P', 'Orellana': 'Q', 'Los Ríos': 'R', 'Pastaza': 'S',
     'Tungurahua': 'T', 'Cañar': 'U', 'Morona Santiago': 'V', 'Galápagos': 'W', 'Cotopaxi': 'X', 'Santa Elena': 'Y', 'Zamora Chinchipe': 'Z'
 }
-
-# Letras válidas para la primera letra de la placa (correspondiente a las provincias)
 letras_validas = set(provincias.values())
-
-# Expresión regular combinada para placas con formato general
 expresion_combinada = r"^[A-Z](?![AUZEXM])[B-Y][A-Z]{2}\d{4}$|^[A-Z][A-U,Z,E,X,M][A-Z]{2}\d{4}$"
 
-# Definir las letras según el tipo de vehículo
-letras_particular = set("BCDFGHIJKLNOPQRSTVWY")  # Vehículos particulares
-letras_servicio_publico = set("AUZEXM")  # Vehículos de servicio público
 
+letras_particular = set("BCDFGHIJKLNOPQRSTVWY")
+letras_servicio_publico = set("AUZEXM")
+
+# Reglas de colores
+colores_validos = {
+    "Particular": {"fondo": "Blanco", "letra": "Negro"},
+    "Servicio Público": {"fondo": "Blanco", "letra": "Negro"}
+}
 # Función corregida
-def verificar_placa(placa):
+def verificar_placa(placa, data):
     placa = placa.upper()  # Convertir la placa a mayúsculas para asegurar la validación
+    color_fondo = data.get("color_fondo", "").capitalize()
+    color_letra = data.get("color_letra", "").capitalize()
+
+    if not placa or not color_fondo or not color_letra:
+        return {"error": "Faltan datos: placa, color_fondo o color_letra."}, 400
 
     # Validar que la primera letra de la placa corresponde a una provincia válida
     if placa[0] not in letras_validas:
@@ -43,6 +51,14 @@ def verificar_placa(placa):
                     tipo_vehiculo = "Servicio Público"
                 else:
                     return {"error": "Formato incorrecto para Carro Particular o Servicio Público."}, 400
+                
+                # Validar colores
+                colores_requeridos = colores_validos[tipo_vehiculo]
+                if color_fondo != colores_requeridos["fondo"] or color_letra != colores_requeridos["letra"]:
+                    return {
+                        "error": f"Los colores especificados no son válidos para un vehículo {tipo_vehiculo}. "
+                                 f"Requiere fondo: {colores_requeridos['fondo']} y letra: {colores_requeridos['letra']}."
+                    }, 400
                 
                 # Obtener la provincia
                 provincia = [prov for prov, letra in provincias.items() if letra == placa[0]][0]
@@ -65,6 +81,14 @@ def verificar_placa(placa):
             tipo_vehiculo = "Servicio Público"
         else:
             tipo_vehiculo = "Desconocido"
+
+        # Validar colores
+        colores_requeridos = colores_validos[tipo_vehiculo]
+        if color_fondo != colores_requeridos["fondo"] or color_letra != colores_requeridos["letra"]:
+            return {
+                "error": f"Los colores especificados no son válidos para un vehículo {tipo_vehiculo}. "
+                         f"Requiere fondo: {colores_requeridos['fondo']} y letra: {colores_requeridos['letra']}."
+            }, 400
         
         provincia = [prov for prov, letra in provincias.items() if letra == placa[0]][0]
         return {
@@ -72,6 +96,7 @@ def verificar_placa(placa):
             "tipo_vehiculo": tipo_vehiculo,
             "provincia": provincia,
             "pais": "Ecuador"
+
         }, 200
     else:
         return {"error": "La placa no es válida según las reglas establecidas."}, 400

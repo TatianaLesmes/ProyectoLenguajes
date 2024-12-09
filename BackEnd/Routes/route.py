@@ -21,10 +21,14 @@ def route_restar():
 def route_verificar_placa():
     data = request.get_json()
     placa = data.get('placa', '')
-    if not placa:
-        return jsonify({"error": "Se debe proporcionar una placa."}), 400
-    
+    color_fondo = data.get('color_fondo', '').capitalize()
+    color_letra = data.get('color_letra', '').capitalize()
+
+    # Validar que se proporcionen todos los datos necesarios
+    if not placa or not color_fondo or not color_letra:
+        return jsonify({"error": "Se debe proporcionar la placa, color_fondo y color_letra."}), 400
+
     # Llamar a la función del controlador para verificar la placa
-    result, status_code = verificar_placa(placa)
-    
+    result, status_code = verificar_placa(placa, data)  # Pasamos `data` completa para obtener los colores correctos
+
     return jsonify(result), status_code
