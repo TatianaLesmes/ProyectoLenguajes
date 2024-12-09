@@ -3,26 +3,29 @@ import pandas as pd
 import os
 from typing import Dict, Optional, Union
 
-
 # Ejemplo de uso para pruebas
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 csv_path = os.path.join(current_dir, '..', 'data', 'matriculas_data.xlsx')
     
-
-
 # Definir las expresiones regulares por país
 PLATE_PATTERNS = {
     "Colombia": {
-        "pattern": r'^[A-MNPOR-Z]{3}[0-9]{3}$',
-        "forbidden_letters": {'Ñ'},
-        "description": "3 letras seguidas de 3 números (sin Ñ)"
-    },
+    "pattern": r'^[A-MNPOR-Z]{3}-[0-9]{3}$',
+    "forbidden_letters": {'Ñ'},
+    "description": "3 letras, guion, 3 números (sin Ñ)"
+},
      "Mexico": {
         "pattern": r'^[A-Z]{3}-[0-9]{3}-[A-Z]$',
         "forbidden_letters": {'Ñ'},
         "description": "3 letras, guión, 3 números, guión, 1 letra (sin Ñ)"
+    },
+    "Honduras": {
+        "pattern": r'^[A-Z] [A-Z]{2} [0-9]{4}$',
+        "forbidden_letters": {'Q','O','Ñ''U'},
+        "description": "3 letras, guión, 3 números, guión, 1 letra (sin Ñ)"
     }
+    
     # Agregar más países según sea necesario
 }
 
@@ -51,7 +54,7 @@ def alphanumeric_to_number(plate: str) -> int:
     Convierte una placa alfanumérica en un valor numérico comparable
     """
     # Eliminar guiones para México
-    plate = plate.replace('-', '')
+    plate = plate.replace('-', '').replace(' ','')
     
     letters = plate[:3]
     number = int(plate[3:6])
@@ -142,3 +145,71 @@ def get_plate_info(plate: str, color_fondo: str, color_letra: str, excel_path: s
         response["message"] = f"Error al procesar los datos: {str(e)}"
     
     return response
+
+
+
+
+
+
+"""
+   
+   import os
+import pandas as pd
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+csv_path = os.path.join(current_dir, '..', 'data', 'matriculas_data.xlsx')
+
+def format_matricula(row, columna):
+  
+    Formatea una matrícula en el formato AAA-000 solo para Colombia
+    
+    Args:
+        row (pd.Series): Fila del DataFrame con información de país y matrícula
+        columna (str): Nombre de la columna a formatear ('Rango_Inicial' o 'Rango_Final')
+    
+    Returns:
+        str: Matrícula formateada o sin cambios
+   
+    # Verificar si el país es Colombia
+    if row['País'] == 'Colombia':
+        matricula = str(row[columna])
+        
+        # Verificar si la matrícula tiene al menos 3 caracteres
+        if len(matricula) >= 3:
+            # Separar los primeros 3 caracteres y el resto
+            parte_letras = matricula[:3]
+            parte_numeros = matricula[3:]
+            
+            # Formatear con guión
+            return f"{parte_letras}-{parte_numeros}"
+    
+    # Si no es Colombia o la matrícula es muy corta, devolverla como está
+    return str(row[columna])
+
+# Leer el archivo Excel
+df = pd.read_excel(csv_path)
+
+ Aplicar el formato a las columnas de Rango_Inicial y Rango_Final
+ Usar axis=1 para pasar toda la fila a la función
+df['Rango_Inicial'] = df.apply(lambda row: format_matricula(row, 'Rango_Inicial'), axis=1)
+df['Rango_Final'] = df.apply(lambda row: format_matricula(row, 'Rango_Final'), axis=1)
+
+# Guardar el DataFrame modificado
+df.to_excel(csv_path, index=False)
+
+# Opcional: Mostrar los resultados para verificar
+print(df[['País', 'Rango_Inicial', 'Rango_Final']].head())
+   
+   
+   
+   
+    """
+
+
+
+
+
+
+
+
+
